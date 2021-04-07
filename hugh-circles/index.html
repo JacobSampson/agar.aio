@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>agar.aio</title>
+    <script src="index.js" type="text/javascript" defer></script>
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <!-- Image -->
+        <form action="#" onsubmit="return false;"/>
+        <input type="file" id="img">
+        <input type="button" value="Load" onclick="loadImage();" />
+
+        <!-- Controls -->
+        <label for="param">Large params</label>
+        <input id="param" name="param" type="checkbox" onchange="toggleParams();" />
+
+        <label for="dp">dp</label>
+        <input id="dp" name="dp" type="number" onchange="setParam(document.getElementById('dp'));" />
+        <label for="minDist">minDist</label>
+        <input id="minDist" name="minDist" type="number" onchange="setParam(document.getElementById('minDist'));" />
+        <label for="param1">param1</label>
+        <input id="param1" name="param1" type="number" onchange="setParam(document.getElementById('param1'));" />
+        <label for="param2">param2</label>
+        <input id="param2" name="param2" type="number" onchange="setParam(document.getElementById('param2'));" />
+        <label for="minRadius">minRadius</label>
+        <input id="minRadius" name="minRadius" type="number" onchange="setParam(document.getElementById('minRadius'));" />
+        <label for="maxRadius">maxRadius</label>
+        <input id="maxRadius" name="maxRadius" type="number" onchange="setParam(document.getElementById('maxRadius'));" />
+    </header>
+
+    <main>
+        <!-- Output -->
+        <canvas id="canvas"></canvas>
+        <canvas id="canvasBW"></canvas>
+        <canvas id="canvasResize"></canvas>
+        <canvas id="canvasBlur"></canvas>
+        <canvas id="canvasOutputSmall"></canvas>
+        <canvas id="canvasOutputLarge"></canvas>
+    </main>
+</body>
+</html>

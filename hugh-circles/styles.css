@@ -1,0 +1,18 @@
+main {
+    display: flex;
+    flex-direction: column;
+    width: 75vh;
+}
+
+header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin-bottom: 100%;
+}
+
+form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5em;
+}
