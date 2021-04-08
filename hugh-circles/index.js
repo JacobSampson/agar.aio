@@ -111,33 +111,42 @@ function convert(image) {
             let x = circles.data32F[i * 3];
             let y = circles.data32F[i * 3 + 1];
             let radius = circles.data32F[i * 3 + 2];
-            let center = new cv.Point(x, y);
             points.push([x, y, radius]);
-
-            cv.circle(dst, center, radius, color);
         }
 
         return [dst, points];
     }
 
+    const drawCircles = (circles, dst, color, plusRadus=0) => {
+        for (let i = 0; i < circles.length; ++i) {    
+            let [x,y,radius] = circles[i];
+            let center = new cv.Point(x, y);
+    
+            cv.circle(dst, center, radius + plusRadus, color, -1);
+        }
+    }
+
     let [dst, parsedCircles] = houghCircles(smallParams, dstBlurred)
     console.log(parsedCircles)
     // cv.imshow('canvasOutputSmall', dst);
-
-    for (let i = 0; i < parsedCircles.length; ++i) {
-        // let color = new cv.Scalar(0, 0, 0);
-        let color = new cv.Scalar(255, 255, 255);
-
-        let [x,y,radius] = parsedCircles[i];
-        let center = new cv.Point(x, y);
-
-        cv.circle(dstBlurred, center, radius + 5, color, -1);
-    }
+    drawCircles(parsedCircles, dstBlurred, new cv.Scalar(255, 255, 255), 5)
 
     cv.imshow('canvasOutputSmall', dstBlurred);
 
     [dst, parsedCircles] = houghCircles(largeParams, dstBlurred)
-    console.log(parsedCircles)
+    console.log(parsedCircles);
+    drawCircles(parsedCircles, dst, new cv.Scalar(255, 0, 0));
+
+    // Find bombs
+    parsedCircles.filter(([x, y, radius]) => {
+        const originalWidth = Math.round(x * (width / widthResized));
+        const originalHeight = Math.round(y * (height / heightResized));
+        
+        begin = originalWidth * src.cols * 3 + originalHeight * 3
+
+        console.log(src.data[begin], src.data[begin + 1], src.data[begin + 2])
+    });
+
     cv.imshow('canvasOutputLarge', dst);
 
     console.log('Done!');

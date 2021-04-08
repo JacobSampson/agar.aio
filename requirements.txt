@@ -1,7 +1,7 @@
 pandas
 opencv-python
 selenium
-numpy<=1.19.2
+numpy
 matplotlib
-# -e git+https://github.com/goktug97/NEAT.git
-
+neat-python
+graphviz

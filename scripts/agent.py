@@ -19,18 +19,24 @@ import time
 class Agent:
     AGARIO_URL = "https://agar.io"
     SPEED_FACTOR = 20
-    MAX_SECS_ALIVE = 30
+    MAX_TIME_ALIVE = 30
+    UPDATE_INTERVAL = 0.5
+    THRESHOLD_SCORE = 100
+    M = 61
 
     def __init__(self, driver, genome):
         # Sellenium
         self.driver = driver
         self.wait = WebDriverWait(self.driver, 15)
+        self.url = Agent.AGARIO_URL
 
         # Neural network
         self.genome = genome
         self.best_score = 0
 
-        self.time_alive = 0
+        # Status
+        self.creation_time = time.time()
+        self.state = np.zeros(self.M)
 
     def setup(self):
         self.driver.get(self.AGARIO_URL)
@@ -39,41 +45,50 @@ class Agent:
         play_button = self.wait.until(EC.element_to_be_clickable((By.ID, "play")))
         play_button.click()
 
+    def close(self):
+        self.driver.close()
+
     def move(self):
         pass
 
     def score(self):
         pass
 
-    def get_direction(player, enemies, food):
-        pass
-
     def is_dead(self):
         pass
+
+    def is_done(self):
+        return self.is_dead()
 
     def update(self):
         pass
 
+    def get_state(self):
+        return self.state
+
     def run(self):
-        self.setup()
+        pass
+        # self.setup()
 
-        UPDATE_INTERVAL = 0.5
+        # # Main runner
+        # while not(self.is_dead()) and (self.creation_time < self.MAX_SECS_ALIVE):
+        #     self.update(self.get)
+        #     time.sleep(self.UPDATE_INTERVAL)
+        #     self.creation_time += self.UPDATE_INTERVAL
 
-        # Main runner
-        while not(self.is_dead()) and (self.time_alive < self.MAX_SECS_ALIVE):
-            self.update()
-            time.sleep(UPDATE_INTERVAL)
-            self.time_alive += UPDATE_INTERVAL
+        # print(f"[log] Best score: {self.best_score}")
 
-        print(f"[log] Best score: {self.best_score}")
-
-        return self.best_score
+        # return self.best_score
 
 class TrainAgent(Agent):
     AGARIO_URL = "http://192.168.99.100:3000/"
 
+    def __init__(self, driver, genome, url):
+        super().__init__(driver, genome)
+        self.url = url
+
     def setup(self):
-        self.driver.get(self.AGARIO_URL)
+        self.driver.get(self.url)
 
         # Get canvas
         self.canvas = self.wait.until(EC.presence_of_element_located((By.ID, "cvs")))
@@ -91,39 +106,35 @@ class TrainAgent(Agent):
         size = self.canvas.size
         width, height= size["width"], size["height"]
 
+        # Clamp outputs
+        mouse_x = min(0, max(width, width / 2 + (x * self.SPEED_FACTOR)))
+        mouse_y = min(0, max(height, height / 2 + (y * -1 * self.SPEED_FACTOR)))
+
         # Move mouse
         action = webdriver.ActionChains(self.driver)
-        action.move_to_element_with_offset(self.canvas, width / 2 + (x * self.SPEED_FACTOR), height / 2 + (y * -1 * self.SPEED_FACTOR))
+        action.move_to_element_with_offset(self.canvas, mouse_x, mouse_y)
         action.perform()
 
-    def score(self, player):
-        if (len(player) < 3):
-            return float("-inf")
-
-        return player[2]
-
-    def get_direction(self, player, enemies, food):
-        M = 20
-
-        inputs = process_inputs(
-                    np.array(player),
-                    np.atleast_2d(np.array(enemies)),
-                    np.atleast_2d(np.array(food)),
-                    M)
-        N = len(inputs[0])
-
-        return self.genome(inputs)
-
-        return [0.5, 0.5]
-        # return self.genome(player, enemies, food)
+    def score(self):
+        try:
+            return int(self.canvas.get_attribute('data-score'))
+        except Exception as e:
+            return 0
 
     def is_dead(self):
         start_menu = self.wait.until(EC.presence_of_element_located((By.ID, "startMenuWrapper")))
         return not (start_menu is None) and start_menu.value_of_css_property("max-height") == "1000px"
 
-    def update(self):
-        # Get current field
-        # try:
+    def is_done(self):
+        return (self.best_score > self.THRESHOLD_SCORE) or self.is_dead() or ((time.time() - self.creation_time) > self.MAX_TIME_ALIVE)
+
+    def update(self, move):
+        try:
+            # Move
+            x, y = move
+            self.move(x, y)
+
+            # Update state
             image = get_driver_image(self.driver, self.canvas)
             player, enemies, food = hough_circles(image)
 
@@ -131,9 +142,15 @@ class TrainAgent(Agent):
             # print(f"Enemies: {enemies}")
             # print(f"Food: {len(food)}")
 
-            self.best_score = max(self.score(player), self.best_score)
-            x, y = self.get_direction(player, enemies, food)
-            self.move(x, y)
+            self.state = process_inputs(
+                        player,
+                        np.atleast_2d(np.array(enemies)),
+                        np.atleast_2d(np.array(food)),
+                        self.M)
+
+            self.best_score = max(self.score(), self.best_score)
+
+            return self.best_score
             # print(f"[log] Best score: {self.best_score}, x: {x}, y: {y}")
-        # except Exception as e:
-        #     print(f"[log] Failed to move: {e}")
+        except Exception as e:
+            print(f"[log] Failed to update: {e}")

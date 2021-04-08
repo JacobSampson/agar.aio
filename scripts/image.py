@@ -44,22 +44,30 @@ def hough_circles(image):
     min_index = -1
 
     # Find and extract player
-    MIN_PLAYER_DIST = 10
+    MIN_PLAYER_DIST = 250
     for i in range(0, len(enemies)):
-        dist = ((width_resized / 2) - enemies[i][0]) ** 2 + ((height_resized / 2) - enemies[i][1]) ** 2
+        x, y, radius = enemies[i]
+
+        dist = ((width_resized / 2) - x) ** 2 + ((height_resized / 2) - y) ** 2
         if (dist < MIN_PLAYER_DIST) and (dist < min_dist):
             min_dist = dist
             min_index = i
 
-    player = ()
+    player = None
     if min_index >= 0:
         player = enemies.pop(min_index)
-        save_parsed_circles(high_contrast_image, player, enemies, food)
+        # save_parsed_circles(high_contrast_image, player, enemies, food)
 
-    return [player, enemies, food]
+    transform_origin = lambda x, y, radius: (x - width_resized, y - height_resized, radius)
+
+    # Transform coordinates to center origin
+    map(transform_origin, enemies)
+    map(transform_origin, food)
+
+    return player, enemies, food
 
 def save_parsed_circles(image, player, enemies, food):
-    cv2.imwrite('test/bw.png', image)
+    cv2.imwrite('images/bw.png', image)
     colored_image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
 
     x, y, radius = player
@@ -73,4 +81,4 @@ def save_parsed_circles(image, player, enemies, food):
         x, y, radius = circle
         cv2.circle(colored_image, (round(x), round(y)), round(radius), (255,0,0), thickness=1)
 
-    cv2.imwrite('test/bw_circles.png', colored_image)
+    cv2.imwrite('images/bw_circles.png', colored_image)

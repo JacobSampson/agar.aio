@@ -1,33 +1,44 @@
 import numpy as np
+import math
 
 def process_inputs(player, enemies, food, m):
-    SPLIT = 0.25
+    SPLIT = 0.33
+    features = np.zeros(m)
 
     slots_available = m - 1
-    slots_enemies = round(slots_available * SPLIT)
-    slots_food = slots_available - slots_enemies
-
-    features = []
+    slots_enemies = round((slots_available * SPLIT) / 3)
+    slots_food = round((slots_available - (slots_enemies * 3)) / 2)
 
     # Player
-    x, y, radius = player if len(player) == 3 else 0, 0, 0
-    features.append([1, 0, 0, x, y, radius])
+    index = 0
+    [x, y, radius] = player if (not player is None) else [0, 0, 0]
+    features[index] = radius
 
-    distance_to_player = lambda item: (x - item[0]) ** 2 + (y - item[1]) ** 2
+    distance_to_origin = lambda coords: (coords[0] ** 2) + (coords[1] ** 2)
 
-    food = food[np.argsort(distance_to_player(food))]
-    enemies = enemies[np.argsort(distance_to_player(enemies))]
+    if (np.amin(np.shape(food)) == 0):
+        food = np.array([])
+    else:
+        food = food[np.argsort(np.apply_along_axis(distance_to_origin, 1, food))]
 
+    if (np.amin(np.shape(enemies)) == 0):
+        enemies = np.array([])
+    else:
+        enemies = enemies[np.argsort(np.apply_along_axis(distance_to_origin, 1, enemies))]
+
+    index = 1
     # Enemies
     for (x, y, radius) in enemies[0:slots_enemies]:
-        features.append([0, 1, 0, x, y, radius])
-    for _ in range(slots_enemies - len(enemies)):
-        features.append([0, 1, 0, 0, 0, 0])
+        features[index] = x
+        features[index + 1] = y
+        features[index + 2] = radius
+        index += 3
 
+    index = (slots_enemies * 3)
     # Food
     for (x, y, radius) in food[0:slots_food]:
-        features.append([0, 0, 1, x, y, radius])
-    for _ in range(slots_food - len(food)):
-        features.append([0, 0, 1, 0, 0, 0])
+        features[index] = x
+        features[index + 1] = y
+        index += 2
 
     return features
