@@ -13,13 +13,13 @@ const smallParams = {
     'dp': 1,
     'minDist': 5,
     'param1': 100,
-    'param2': 5,
+    'param2': 4,
     'minRadius': 0,
     'maxRadius': 5
 }
 
-let params = largeParams;
-// let params = smallParams;
+// let params = largeParams;
+let params = smallParams;
 
 const MAX_IMAGE_WIDTH = 750;
 

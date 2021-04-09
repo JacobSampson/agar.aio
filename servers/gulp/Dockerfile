@@ -28,6 +28,9 @@ RUN printf "\nbody { overflow: hidden; }\n.chatbox { opacity: 0; }\n" >> src/cli
 # Add player score to console
 RUN sed -i '/var points = 30 + ~~(player.mass\/5);/aconsole.log("[log] Player score:", points);\ntry {document.getElementById("cvs").setAttribute("data-score", points);} catch (e) {}\n' src/client/js/app.js
 
+# Use custom server.js
+COPY config/server.js src/server/server.js
+
 RUN npm install
 
 EXPOSE 3000

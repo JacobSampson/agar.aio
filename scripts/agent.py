@@ -1,4 +1,4 @@
-from scripts.processing import process_inputs
+from scripts.processing import process_inputs, reduce_state
 from scripts.utils import get_driver_image
 from scripts.image import hough_circles
 from selenium import webdriver
@@ -18,28 +18,29 @@ import time
 
 class Agent:
     AGARIO_URL = "https://agar.io"
-    SPEED_FACTOR = 20
-    MAX_TIME_ALIVE = 30
+    SPEED_FACTOR = 1
+    MAX_TIME_ALIVE = 60
     UPDATE_INTERVAL = 0.5
     THRESHOLD_SCORE = 100
-    M = 61
 
-    def __init__(self, driver, genome):
+    M = 61
+    SPLIT = 0.33
+
+    def __init__(self, driver, url=AGARIO_URL):
         # Sellenium
         self.driver = driver
         self.wait = WebDriverWait(self.driver, 15)
-        self.url = Agent.AGARIO_URL
+        self.url = url
 
         # Neural network
-        self.genome = genome
-        self.best_score = 0
+        self.curr_score = 0
 
         # Status
         self.creation_time = time.time()
         self.state = np.zeros(self.M)
 
     def setup(self):
-        self.driver.get(self.AGARIO_URL)
+        self.driver.get(self.url)
 
         # Click start button
         play_button = self.wait.until(EC.element_to_be_clickable((By.ID, "play")))
@@ -48,8 +49,18 @@ class Agent:
     def close(self):
         self.driver.close()
 
-    def move(self):
-        pass
+    def move(self, x, y):
+        size = self.canvas.size
+        width, height = size["width"], size["height"]
+
+        # Clamp outputs
+        mouse_x = max(0, min(width, width / 2. + (x * self.SPEED_FACTOR)))
+        mouse_y = max(0, min(height, height / 2. + (y * -1 * self.SPEED_FACTOR)))
+
+        # Move mouse
+        action = webdriver.ActionChains(self.driver)
+        action.move_to_element_with_offset(self.canvas, mouse_x, mouse_y)
+        action.perform()
 
     def score(self):
         pass
@@ -58,34 +69,37 @@ class Agent:
         pass
 
     def is_done(self):
-        return self.is_dead()
+        self.is_dead() or ((time.time() - self.creation_time) > self.MAX_TIME_ALIVE)
 
     def update(self):
-        pass
+        self.sleep()
 
     def get_state(self):
         return self.state
 
+    def get_state_components(self):
+        return reduce_state(self.state, self.M, self.SPLIT)
+
+    def sleep(self):
+        time.sleep(self.UPDATE_INTERVAL)
+
+    def get_move(self):
+        return [0,0]
+
     def run(self):
-        pass
-        # self.setup()
+        self.setup()
 
-        # # Main runner
-        # while not(self.is_dead()) and (self.creation_time < self.MAX_SECS_ALIVE):
-        #     self.update(self.get)
-        #     time.sleep(self.UPDATE_INTERVAL)
-        #     self.creation_time += self.UPDATE_INTERVAL
+        # Main runner
+        while not(self.is_done()):
+            move = self.get_move()
+            self.update(move)
 
-        # print(f"[log] Best score: {self.best_score}")
+        print(f"[log] Final score: {self.curr_score}")
 
-        # return self.best_score
+        return self.curr_score
 
-class TrainAgent(Agent):
+class LocalAgent(Agent):
     AGARIO_URL = "http://192.168.99.100:3000/"
-
-    def __init__(self, driver, genome, url):
-        super().__init__(driver, genome)
-        self.url = url
 
     def setup(self):
         self.driver.get(self.url)
@@ -102,19 +116,6 @@ class TrainAgent(Agent):
         chat_input.send_keys("-mass")
         chat_input.send_keys(Keys.ENTER)
 
-    def move(self, x, y):
-        size = self.canvas.size
-        width, height= size["width"], size["height"]
-
-        # Clamp outputs
-        mouse_x = min(0, max(width, width / 2 + (x * self.SPEED_FACTOR)))
-        mouse_y = min(0, max(height, height / 2 + (y * -1 * self.SPEED_FACTOR)))
-
-        # Move mouse
-        action = webdriver.ActionChains(self.driver)
-        action.move_to_element_with_offset(self.canvas, mouse_x, mouse_y)
-        action.perform()
-
     def score(self):
         try:
             return int(self.canvas.get_attribute('data-score'))
@@ -126,7 +127,7 @@ class TrainAgent(Agent):
         return not (start_menu is None) and start_menu.value_of_css_property("max-height") == "1000px"
 
     def is_done(self):
-        return (self.best_score > self.THRESHOLD_SCORE) or self.is_dead() or ((time.time() - self.creation_time) > self.MAX_TIME_ALIVE)
+        return (self.curr_score > self.THRESHOLD_SCORE) or self.is_dead()
 
     def update(self, move):
         try:
@@ -138,19 +139,49 @@ class TrainAgent(Agent):
             image = get_driver_image(self.driver, self.canvas)
             player, enemies, food = hough_circles(image)
 
-            # print(f"Player [{self.best_score}]: {player}")
-            # print(f"Enemies: {enemies}")
-            # print(f"Food: {len(food)}")
-
             self.state = process_inputs(
-                        player,
-                        np.atleast_2d(np.array(enemies)),
-                        np.atleast_2d(np.array(food)),
-                        self.M)
+                            player,
+                            np.atleast_2d(np.array(enemies)),
+                            np.atleast_2d(np.array(food)),
+                            self.M,
+                            self.SPLIT)
 
-            self.best_score = max(self.score(), self.best_score)
+            # self.curr_score = max(self.score(), self.curr_score)
+            self.curr_score = self.score()
 
-            return self.best_score
-            # print(f"[log] Best score: {self.best_score}, x: {x}, y: {y}")
+            return self.curr_score
         except Exception as e:
             print(f"[log] Failed to update: {e}")
+
+class GreedyAgent(LocalAgent):
+    def get_move(self):
+        _, _, food = self.get_state_components()
+
+        # Closest food
+        return food[0]
+
+class AggressiveAgent(LocalAgent):
+    def get_move(self):
+        player_radius, enemies, food = self.get_state_components()
+
+        for enemy in enemies:
+            if not ((enemy[0] == 0) and (enemy[2] == 0)) and player_radius > enemy[2]:
+                return enemy[0:2]
+
+        # Closest food
+        return food[0]
+
+class DefensiveAgent(LocalAgent):
+    CLOSEST_AGENT = 50
+
+    def get_move(self):
+        _, enemies, food = self.get_state_components()
+        closest_enemy = enemies[0]
+        dist_closest_enemy = (((closest_enemy[0]) ** 2) + ((closest_enemy[1]) ** 2)) ** (0.5)
+
+        # Run from closest enemy, if within distance threshold
+        if dist_closest_enemy < DefensiveAgent.CLOSEST_AGENT:
+            return [-closest_enemy[0], -closest_enemy[1]]
+
+        # Closest food
+        return food[0]
