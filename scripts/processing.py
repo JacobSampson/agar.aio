@@ -10,7 +10,7 @@ def process_inputs(player, enemies, food, m, split):
 
     # Player
     index = 0
-    [x, y, radius] = player if (not player is None) else [0, 0, 0]
+    [_, _, radius] = player if (not player is None) else [0, 0, 0]
     features[index] = radius
 
     distance_to_origin = lambda coords: (coords[0] ** 2) + (coords[1] ** 2)
