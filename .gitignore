@@ -5,6 +5,7 @@ Object-Based-RL/
 neat-python/
 .idea/
 Python37
+temp/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

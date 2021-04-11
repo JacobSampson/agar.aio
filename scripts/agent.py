@@ -1,5 +1,5 @@
 from scripts.processing import process_inputs, reduce_state
-from scripts.utils import get_driver_image
+from scripts.utils import get_driver_image, get_driver_screenshot
 from scripts.image import hough_circles
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -31,6 +31,7 @@ class Agent:
         self.driver = driver
         self.wait = WebDriverWait(self.driver, 15)
         self.url = url
+        self.canvas = None
 
         # Neural network
         self.curr_score = 0
@@ -41,10 +42,6 @@ class Agent:
 
     def setup(self):
         self.driver.get(self.url)
-
-        # Click start button
-        play_button = self.wait.until(EC.element_to_be_clickable((By.ID, "play")))
-        play_button.click()
 
     def close(self):
         self.driver.close()
@@ -62,6 +59,9 @@ class Agent:
         action = webdriver.ActionChains(self.driver)
         action.move_to_element_with_offset(self.canvas, mouse_x, mouse_y)
         action.perform()
+
+    def get_image(self):
+        return get_driver_image(self.driver, self.canvas)
 
     def score(self):
         pass
@@ -103,7 +103,7 @@ class LocalAgent(Agent):
     AGARIO_URL = "http://127.0.0.1:3000/"
 
     def setup(self):
-        self.driver.get(self.url)
+        super().setup()
 
         # Get canvas
         self.canvas = self.wait.until(EC.presence_of_element_located((By.ID, "cvs")))
@@ -138,7 +138,7 @@ class LocalAgent(Agent):
             self.move(x, y)
 
             # Update state
-            image = get_driver_image(self.driver, self.canvas)
+            image = self.get_image()
             player, enemies, food = hough_circles(image)
 
             self.state = process_inputs(
@@ -187,3 +187,25 @@ class DefensiveAgent(LocalAgent):
 
         # Closest food
         return food[0]
+
+class AgarioAgent(AggressiveAgent):
+    def setup(self):
+        Agent.setup(self)
+
+        # Get canvas
+        self.canvas = self.wait.until(EC.presence_of_element_located((By.ID, "canvas")))
+
+        # Click start button
+        play_button = self.wait.until(EC.element_to_be_clickable((By.ID, "play")))
+        play_button.click()
+
+        # Wait for CAPTCHA
+        # time.sleep(120)
+        # WebDriverWait(self.driver, 60).until(EC.invisibility_of_element_located((By.ID, "rc-anchor-container")))
+
+    def is_done(self):
+        # Keeps agent going until manual close
+        return False
+
+    def get_image(self):
+        return get_driver_screenshot(self.driver, self.canvas)

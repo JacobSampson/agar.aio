@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 MAX_IMAGE_WIDTH = 750
-PRINT_IMAGE = False
+PRINT_IMAGE = True
 
 def hough_circles(image):
     height, width = image.shape

@@ -1,6 +1,6 @@
 #! C:/agar.aio-master/Python37
 
-from scripts.agent import Agent, AggressiveAgent, DefensiveAgent, GreedyAgent, LocalAgent
+from scripts.agent import AgarioAgent, Agent, AggressiveAgent, DefensiveAgent, GreedyAgent, LocalAgent, AgarioAgent
 from scripts.factories import DriverFactory, ServerFactory
 from scripts.train import Train, TrainCont
 
@@ -24,7 +24,8 @@ CHECKPOINT_FILE_NAME = None if (not CONT_TRAIN) else sys.argv[4]
 # Constants
 
 AGARIO_TRAIN_URL_FORMAT = "http://127.0.0.1:{}"
-AGARIO_TEST_URL = "http://127.0.0.1:3000"
+# AGARIO_TEST_URL = "http://127.0.0.1:3000"
+AGARIO_TEST_URL = "https://agar.io"
 BASE_PORT = 3000
 
 def train():
@@ -57,9 +58,11 @@ def test():
     print('[log] Starting')
 
     agents = [
-        lambda driver, url: AggressiveAgent(driver, url),
-        lambda driver, url: GreedyAgent(driver, url),
-        lambda driver, url: DefensiveAgent(driver, url)
+        lambda driver, url: AgarioAgent(driver, url),
+
+        # lambda driver, url: AggressiveAgent(driver, url),
+        # lambda driver, url: GreedyAgent(driver, url),
+        # lambda driver, url: DefensiveAgent(driver, url)
     ]
     driver_factory = DriverFactory(AGARIO_TEST_URL)
 
@@ -84,5 +87,5 @@ def test():
     # os.kill(pid, signal.CTRL_C_EVENT)    
 
 if __name__ == "__main__":
-    train()
-    # test()
+    # train()
+    test()
