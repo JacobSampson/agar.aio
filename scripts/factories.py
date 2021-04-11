@@ -24,7 +24,8 @@ class DriverFactory:
         options.add_argument("--test-type")
         options.add_argument("--log-level=3")
 
-        return webdriver.Chrome(options=options)
+        # return webdriver.Chrome(options=options, executable_path="C:/agar.aio/scripts/chromedriver.exe")
+        return webdriver.Chrome(options=options, executable_path="C:/agar.aio/scripts/chromedriver.exe")
 
     # Generate agents
     def create(self):

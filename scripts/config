@@ -1,14 +1,14 @@
 [NEAT]
 fitness_criterion     = max
 fitness_threshold     = 200
-pop_size              = 8
+pop_size              = 4
 reset_on_extinction   = True
 
 [DefaultGenome]
 # node activation options
-activation_default      = sigmoid
+activation_default      = identity
 activation_mutate_rate  = 0.10
-activation_options      = sigmoid
+activation_options      = identity
 
 # node aggregation options
 aggregation_default     = sum
@@ -21,7 +21,7 @@ bias_init_stdev         = 1.0
 bias_max_value          = 30.0
 bias_min_value          = -30.0
 bias_mutate_power       = 2.093
-bias_mutate_rate        = 0.7
+bias_mutate_rate        = 0.5
 bias_replace_rate       = 0.1
 
 # genome compatibility options

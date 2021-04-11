@@ -4,6 +4,7 @@ Neural-Episodic-Control/
 Object-Based-RL/
 neat-python/
 .idea/
+Python37
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

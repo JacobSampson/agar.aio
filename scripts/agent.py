@@ -19,7 +19,7 @@ import time
 class Agent:
     AGARIO_URL = "https://agar.io"
     SPEED_FACTOR = 1
-    MAX_TIME_ALIVE = 60
+    MAX_TIME_ALIVE = 30
     UPDATE_INTERVAL = 0.5
     THRESHOLD_SCORE = 100
 
@@ -48,6 +48,7 @@ class Agent:
 
     def close(self):
         self.driver.close()
+        self.driver = None
 
     def move(self, x, y):
         size = self.canvas.size
@@ -69,9 +70,9 @@ class Agent:
         pass
 
     def is_done(self):
-        self.is_dead() or ((time.time() - self.creation_time) > self.MAX_TIME_ALIVE)
+        pass
 
-    def update(self):
+    def update(self, move):
         self.sleep()
 
     def get_state(self):
@@ -99,7 +100,7 @@ class Agent:
         return self.curr_score
 
 class LocalAgent(Agent):
-    AGARIO_URL = "http://192.168.99.100:3000/"
+    AGARIO_URL = "http://127.0.0.1:3000/"
 
     def setup(self):
         self.driver.get(self.url)
@@ -119,7 +120,7 @@ class LocalAgent(Agent):
     def score(self):
         try:
             return int(self.canvas.get_attribute('data-score'))
-        except Exception as e:
+        except Exception:
             return 0
 
     def is_dead(self):
@@ -127,10 +128,11 @@ class LocalAgent(Agent):
         return not (start_menu is None) and start_menu.value_of_css_property("max-height") == "1000px"
 
     def is_done(self):
-        return (self.curr_score > self.THRESHOLD_SCORE) or self.is_dead()
+        is_done = (self.curr_score > self.THRESHOLD_SCORE) or self.is_dead() or ((time.time() - self.creation_time) > self.MAX_TIME_ALIVE)
+        return is_done
 
     def update(self, move):
-        try:
+        # try:
             # Move
             x, y = move
             self.move(x, y)
@@ -150,8 +152,8 @@ class LocalAgent(Agent):
             self.curr_score = self.score()
 
             return self.curr_score
-        except Exception as e:
-            print(f"[log] Failed to update: {e}")
+        # except Exception:
+        #     print(f"[log] Failed to update: {e}")
 
 class GreedyAgent(LocalAgent):
     def get_move(self):

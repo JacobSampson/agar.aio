@@ -14,9 +14,9 @@ class Train:
         genome_id, genome = genome
         agent = None
         try:
-            driver, url = self.driver_factory()
+            driver, url = self.driver_factory.create()
             agent = LocalAgent(driver, url)
-        except:
+        except Exception:
             return (genome_id, None)
 
         agent.setup()
@@ -73,7 +73,7 @@ class Train:
             population.run(self._eval_genomes, n)
             winner = population.best_genome
             pickle.dump(winner, open('./checkpoints/winner.pkl', 'wb'))
-        except KeyboardInterrupt:
+        finally:
             # Visualize
             visualize.draw_net(config, winner, True)
             visualize.plot_stats(stats, ylog=False, view=True)
