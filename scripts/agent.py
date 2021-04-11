@@ -23,8 +23,8 @@ class Agent:
     UPDATE_INTERVAL = 0.5
     THRESHOLD_SCORE = 100
 
-    M = 61
-    SPLIT = 0.33
+    M = 19
+    SPLIT = 0.50
 
     def __init__(self, driver, url=AGARIO_URL):
         # Sellenium
@@ -154,6 +154,16 @@ class LocalAgent(Agent):
             return self.curr_score
         # except Exception:
         #     print(f"[log] Failed to update: {e}")
+
+class NNAgent(LocalAgent):
+    MAX_TIME_ALIVE = float("inf")
+
+    def __init__(self, driver, url, net):
+        super().__init__(driver, url)
+        self.net = net
+
+    def get_move(self):
+        return self.net.activate(self.get_state())
 
 class GreedyAgent(LocalAgent):
     def get_move(self):
