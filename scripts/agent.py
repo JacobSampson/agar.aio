@@ -199,6 +199,8 @@ class DefensiveAgent(LocalAgent):
         return food[0]
 
 class AgarioAgent(AggressiveAgent):
+    MAX_TIME_ALIVE = float("inf")
+
     def setup(self):
         Agent.setup(self)
 
@@ -212,10 +214,6 @@ class AgarioAgent(AggressiveAgent):
         # Wait for CAPTCHA
         # time.sleep(120)
         # WebDriverWait(self.driver, 60).until(EC.invisibility_of_element_located((By.ID, "rc-anchor-container")))
-
-    def is_done(self):
-        # Keeps agent going until manual close
-        return False
 
     def get_image(self):
         return get_driver_screenshot(self.driver, self.canvas)
