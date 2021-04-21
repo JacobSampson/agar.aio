@@ -229,9 +229,5 @@ class AgarioAgent(NNAgent):
         # time.sleep(120)
         # WebDriverWait(self.driver, 60).until(EC.invisibility_of_element_located((By.ID, "rc-anchor-container")))
 
-    def is_done(self):
-        # Keeps agent going until death
-        return self.is_dead()
-
     def get_image(self):
         return get_driver_screenshot(self.driver, self.canvas)
