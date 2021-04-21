@@ -21,10 +21,10 @@ class Agent:
     SPEED_FACTOR = 1
     MAX_TIME_ALIVE = 30
     UPDATE_INTERVAL = 0.5
-    THRESHOLD_SCORE = 100
+    THRESHOLD_SCORE = 200
 
-    M = 19
-    SPLIT = 0.50
+    M = 6
+    SPLIT = 0.6
 
     def __init__(self, driver, url=AGARIO_URL):
         # Sellenium
@@ -52,8 +52,9 @@ class Agent:
         width, height = size["width"], size["height"]
 
         # Clamp outputs
-        mouse_x = max(0, min(width, width / 2. + (x * self.SPEED_FACTOR)))
-        mouse_y = max(0, min(height, height / 2. + (y * -1 * self.SPEED_FACTOR)))
+        BUFFER = 10
+        mouse_x = max(BUFFER, min(width - BUFFER, width / 2. + (x * self.SPEED_FACTOR)))
+        mouse_y = max(BUFFER, min(height - BUFFER, height / 2. + (y * -1 * self.SPEED_FACTOR)))
 
         # Move mouse
         action = webdriver.ActionChains(self.driver)
@@ -64,15 +65,15 @@ class Agent:
         return get_driver_image(self.driver, self.canvas)
 
     def score(self):
-        pass
+        raise NotImplementedError
 
     def is_dead(self):
-        pass
+        raise NotImplementedError
 
     def is_done(self):
-        pass
+        raise NotImplementedError
 
-    def update(self, move):
+    def update(self):
         self.sleep()
 
     def get_state(self):
@@ -92,8 +93,7 @@ class Agent:
 
         # Main runner
         while not(self.is_done()):
-            move = self.get_move()
-            self.update(move)
+            self.update()
 
         print(f"[log] Final score: {self.curr_score}")
 
@@ -101,9 +101,11 @@ class Agent:
 
 class LocalAgent(Agent):
     AGARIO_URL = "http://127.0.0.1:3000/"
+    CLASS_NAME = "LOCAL"
 
     def setup(self):
         super().setup()
+        print(f'[log] Starting {self.CLASS_NAME}')
 
         # Get canvas
         self.canvas = self.wait.until(EC.presence_of_element_located((By.ID, "cvs")))
@@ -113,9 +115,9 @@ class LocalAgent(Agent):
         play_button.click()
 
         # Change settings to see mass
-        chat_input = self.wait.until(EC.presence_of_element_located((By.ID, "chatInput")))
-        chat_input.send_keys("-mass")
-        chat_input.send_keys(Keys.ENTER)
+        # chat_input = self.wait.until(EC.presence_of_element_located((By.ID, "chatInput")))
+        # chat_input.send_keys("-mass")
+        # chat_input.send_keys(Keys.ENTER)
 
     def score(self):
         try:
@@ -131,12 +133,8 @@ class LocalAgent(Agent):
         is_done = (self.curr_score > self.THRESHOLD_SCORE) or self.is_dead() or ((time.time() - self.creation_time) > self.MAX_TIME_ALIVE)
         return is_done
 
-    def update(self, move):
-        # try:
-            # Move
-            x, y = move
-            self.move(x, y)
-
+    def update(self):
+        try:
             # Update state
             image = self.get_image()
             player, enemies, food = hough_circles(image)
@@ -148,24 +146,32 @@ class LocalAgent(Agent):
                             self.M,
                             self.SPLIT)
 
-            # self.curr_score = max(self.score(), self.curr_score)
             self.curr_score = self.score()
 
+            x, y = self.get_move()
+            self.move(x, y)
+
             return self.curr_score
-        # except Exception:
-        #     print(f"[log] Failed to update: {e}")
+
+        except Exception as e:
+            print(f"[log] Failed to update: {e}")
 
 class NNAgent(LocalAgent):
-    MAX_TIME_ALIVE = float("inf")
+    # MAX_TIME_ALIVE = float("inf")
+    CLASS_NAME = "NN"
 
     def __init__(self, driver, url, net):
         super().__init__(driver, url)
         self.net = net
 
     def get_move(self):
-        return self.net.activate(self.get_state())
+        move = self.net.activate(self.get_state())
+        return move
 
 class GreedyAgent(LocalAgent):
+    # MAX_TIME_ALIVE = float("inf")
+    CLASS_NAME = "GREEDY"
+
     def get_move(self):
         _, _, food = self.get_state_components()
 
@@ -173,6 +179,9 @@ class GreedyAgent(LocalAgent):
         return food[0]
 
 class AggressiveAgent(LocalAgent):
+    # MAX_TIME_ALIVE = float("inf")
+    CLASS_NAME = "AGGRESSIVE"
+
     def get_move(self):
         player_radius, enemies, food = self.get_state_components()
 
@@ -184,21 +193,28 @@ class AggressiveAgent(LocalAgent):
         return food[0]
 
 class DefensiveAgent(LocalAgent):
+    # MAX_TIME_ALIVE = float("inf")
     CLOSEST_AGENT = 50
+    CLASS_NAME = "DEFENSIVE"
 
     def get_move(self):
         _, enemies, food = self.get_state_components()
-        closest_enemy = enemies[0]
-        dist_closest_enemy = (((closest_enemy[0]) ** 2) + ((closest_enemy[1]) ** 2)) ** (0.5)
 
-        # Run from closest enemy, if within distance threshold
-        if dist_closest_enemy < DefensiveAgent.CLOSEST_AGENT:
-            return [-closest_enemy[0], -closest_enemy[1]]
+        if len(enemies) > 0:
+            closest_enemy = enemies[0]
+            dist_closest_enemy = No(((closest_enemy[0]) ** 2) + ((closest_enemy[1]) ** 2)) ** (0.5)
+
+            # Run from closest enemy, if within distance threshold
+            if dist_closest_enemy < DefensiveAgent.CLOSEST_AGENT:
+                return [-closest_enemy[0], -closest_enemy[1]]
 
         # Closest food
         return food[0]
 
-class AgarioAgent(AggressiveAgent):
+class AgarioAgent(NNAgent):
+    MAX_TIME_ALIVE = float("inf")
+    CLASS_NAME = "AGARIO"
+
     def setup(self):
         Agent.setup(self)
 
@@ -214,8 +230,8 @@ class AgarioAgent(AggressiveAgent):
         # WebDriverWait(self.driver, 60).until(EC.invisibility_of_element_located((By.ID, "rc-anchor-container")))
 
     def is_done(self):
-        # Keeps agent going until manual close
-        return False
+        # Keeps agent going until death
+        return self.is_dead()
 
     def get_image(self):
         return get_driver_screenshot(self.driver, self.canvas)

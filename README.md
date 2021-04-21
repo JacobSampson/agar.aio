@@ -28,7 +28,6 @@ Bot for the online multiplayer game [agar.io](https://agar.io/). Trained with a 
 
 Run `sh train.sh` to start training program
 
-
 Run the local Node.js server on a specific port
 ```bash
 SERVER_PORT=3000 docker-compose -f servers/gulp/docker-compose.yaml up --build

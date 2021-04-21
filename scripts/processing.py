@@ -33,7 +33,7 @@ def process_inputs(player, enemies, food, m, split):
         features[index + 2] = radius
         index += 3
 
-    index = (slots_enemies * 3)
+    index = (slots_enemies * 3) + 1
     # Food
     for (x, y, radius) in food[0:slots_food]:
         features[index] = x
