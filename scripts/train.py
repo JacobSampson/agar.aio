@@ -1,9 +1,13 @@
 from multiprocessing.dummy import Pool as ThreadPool
 import os
 import pickle
-from scripts.agent import LocalAgent
+from scripts.agent import AgarioAgent, Agent, AggressiveAgent, DefensiveAgent, GreedyAgent, LocalAgent, AgarioAgent, NNAgent
 import neat
 import scripts.visualize as visualize
+from threading import Lock, Thread
+import random
+
+USE_VISUALS = False
 
 class Train:
     def __init__(self, driver_factory, generations):
@@ -12,36 +16,59 @@ class Train:
 
     def _fitness_func(self, genome):
         genome_id, genome = genome
+        net = neat.nn.FeedForwardNetwork.create(genome, self.config)
+
+        # Setup agent
         agent = None
         try:
             driver, url = self.driver_factory.create()
-            agent = LocalAgent(driver, url)
+            agent = NNAgent(driver, url, net)
         except Exception:
             return (genome_id, None)
 
-        agent.setup()
+        # Setup opponent
+        thread = Thread(target=self._spawn_opponent)
+        thread.start()
 
-        net = neat.nn.FeedForwardNetwork.create(genome, self.config)
-
-        fitness = 0
-        while not agent.is_done():
-            # Get next action
-            state = agent.get_state()
-            output = net.activate(state)
-
-            # Run and score
-            fitness = agent.update(output)
-
+        # Run and score
+        fitness = agent.run()
         if agent.is_dead():
             print('Agent died!')
             fitness = 0
-
         agent.close()
+
+        # Finish opponent
+        try:
+            thread.join()
+        except Exception as e:
+            print(e)
 
         genome.fitness = fitness
         return (genome_id, fitness)
 
+    def _spawn_opponent(self, agent_spawner=None):
+        # Choose a random agent
+        if agent_spawner is None:
+            agent_spawner = random.choice([
+                lambda driver, url: AggressiveAgent(driver, url),
+                lambda driver, url: GreedyAgent(driver, url),
+                lambda driver, url: DefensiveAgent(driver, url),
+            ])
+
+        # Randomly add an agent
+        if random.random() < 0.5:
+            return
+
+        try:
+            driver, url = self.driver_factory.create()
+            agent = agent_spawner(driver, url)
+            agent.run()
+            agent.close()
+        except Exception:
+            pass
+
     def _eval_genomes(self, genomes, config):
+        # Create agents
         pool = ThreadPool(len(genomes))
         rewards = pool.map(self._fitness_func, genomes)
 
@@ -67,17 +94,17 @@ class Train:
         stats = neat.StatisticsReporter()
         population.add_reporter(stats)
 
-        winner = None
         try:
-            # Run
             population.run(self._eval_genomes, n)
+        finally:
             winner = population.best_genome
             pickle.dump(winner, open('./checkpoints/winner.pkl', 'wb'))
-        finally:
-            # Visualize
-            visualize.draw_net(config, winner, True)
-            visualize.plot_stats(stats, ylog=False, view=True)
-            visualize.plot_species(stats, view=True)
+
+            if USE_VISUALS:
+                # Visualize
+                visualize.draw_net(config, winner, True)
+                visualize.plot_stats(stats, ylog=False, view=True)
+                visualize.plot_species(stats, view=True)
 
     def main(self, config_file="config"):
         local_dir = os.path.dirname(__file__)
@@ -89,6 +116,6 @@ class TrainCont(Train):
         super().__init__(driver_factory, generations)
         self.checkpoint_file_name = checkpoint_file_name
 
-    def _run(self, config_file, n):
+    def _run(self, config_file, n, _=None):
         checkpoint = neat.Checkpointer.restore_checkpoint(self.checkpoint_file_name)
         super()._run(config_file, n, checkpoint)

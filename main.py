@@ -13,19 +13,24 @@ import time
 from threading import Lock, Thread
 
 import neat
+import numpy as np
+import pandas as pd
 
 # Arguments
 # TODO: Convert to named arguments
 
-IS_TRAIN = sys.argv[1]
+# IS_TRAIN = sys.argv[1]
+IS_TRAIN = False
 NUM_GENERATIONS = int(sys.argv[2])
 NUM_SERVERS = int(sys.argv[3])
 
 CONT_TRAIN = len(sys.argv) == 5
 CHECKPOINT_FILE_NAME = None if (not CONT_TRAIN) else sys.argv[4]
 
-WINNER_FILE_NAME = "./checkpoints/4.10.2021/winner.pkl"
+# WINNER_FILE_NAME = "./checkpoints/4.18.2021/winner.pkl"
+WINNER_FILE_NAME = os.environ["WINNER_FILE_NAME"]
 CONFIG_FILE_NAME = "./scripts/config"
+NUM_RUNS = 50
 
 # Constants
 
@@ -57,35 +62,65 @@ def train():
             os.kill(pid, signal.CTRL_C_EVENT)
 
 def test():
+    # pid = ServerFactory.create(BASE_PORT)
+    time.sleep(15)
+
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
                         CONFIG_FILE_NAME)
-    genome = pickle.load(open(WINNER_FILE_NAME, "rb"))
+    genome = pickle.load(open("./checkpoints/history/%s" % WINNER_FILE_NAME, "rb"))
     net = neat.nn.FeedForwardNetwork.create(genome, config)
 
-    agents = [
-        lambda driver, url: NNAgent(driver, url, net),
-
-        # lambda driver, url: AgarioAgent(driver, url),
-        # lambda driver, url: AggressiveAgent(driver, url),
-        # lambda driver, url: GreedyAgent(driver, url),
-        # lambda driver, url: DefensiveAgent(driver, url)
-    ]
-    driver_factory = DriverFactory(AGARIO_TEST_URL)
-
-    threads = []
+    scores = pd.DataFrame(columns=["checkpoint", "run", "score", "player"])
     try:
-        for agent_spawner in agents:
-            driver, url = driver_factory.create()
-            agent = agent_spawner(driver, url)
+        for num_run in range(NUM_RUNS):
+            print('[log] Run %d' % num_run)
+            agents = [
+                lambda driver, url: NNAgent(driver, url, net),
 
-            thread = Thread(target=agent.run)
-            threads.append(thread)
-            thread.start()
+                lambda driver, url: AggressiveAgent(driver, url),
+                lambda driver, url: GreedyAgent(driver, url),
+                lambda driver, url: DefensiveAgent(driver, url)
+
+                # lambda driver, url: AgarioAgent(driver, url, net),
+            ]
+            driver_factory = DriverFactory(AGARIO_TEST_URL)
+
+            threads = []
+            for (index, agent_spawner) in enumerate(agents):
+                driver, url = driver_factory.create()
+                agent = agent_spawner(driver, url)
+
+                def score_agent(agent):
+                    def score_agent():
+                        score = agent.run()
+
+                        # Add score to record
+                        rows, _ = scores.shape
+                        scores.loc[rows] = [WINNER_FILE_NAME.split('.')[0], num_run, score, agent.CLASS_NAME]
+
+                    return score_agent
+
+                thread = Thread(target=score_agent(agent))
+                threads.append(thread)
+                thread.start()
+
+            for thread in threads:
+                thread.join()
+
+            time.sleep(15)
+    except Exception as e:
+        print(e)
     finally:
-        for thread in threads:
-            thread.join()
+        scores.to_csv('checkpoints/scores.csv', index=False, mode='a', header=False)
+        # os.kill(pid, signal.CTRL_C_EVENT)
+
+    sys.exit()
 
 if __name__ == "__main__":
-    # train()
-    test()
+    if IS_TRAIN:
+        print('Training...')
+        train()
+    else:
+        print('Testing...')
+        test()

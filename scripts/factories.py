@@ -18,14 +18,14 @@ class DriverFactory:
 
     def _setup(self):
         options = Options()
-        # options.headless = True
+        options.headless = True
         options.add_argument("--window-size=1920,1200")
         options.add_argument('--ignore-certificate-errors')
-        options.add_argument("--test-type")
         options.add_argument("--log-level=3")
+        # options.add_argument("--test-type")
 
-        return webdriver.Chrome(options=options)
-        # return webdriver.Chrome(options=options, executable_path="C:/agar.aio/scripts/chromedriver.exe")
+        # return webdriver.Chrome(options=options)
+        return webdriver.Chrome(options=options, executable_path="C:/agar.aio/scripts/chromedriver.exe")
 
     # Generate agents
     def create(self):

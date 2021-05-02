@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 MAX_IMAGE_WIDTH = 750
-PRINT_IMAGE = True
+PRINT_IMAGE = False
 
 def hough_circles(image):
     height, width = image.shape
@@ -47,24 +47,38 @@ def hough_circles(image):
 
     enemies = [] if ((large_circles is None) or (len(large_circles) == 0)) else list(large_circles[0])
 
-    min_dist = float('inf')
-    min_index = -1
-
     # Find and extract player
-    MIN_PLAYER_DIST = 250
-    for i in range(0, len(enemies)):
-        x, y, radius = enemies[i]
-
-        dist = ((width_resized / 2) - x) ** 2 + ((height_resized / 2) - y) ** 2
-        if (dist < MIN_PLAYER_DIST) and (dist < min_dist):
-            min_dist = dist
-            min_index = i
-
+    MIN_PLAYER_DIST_SQUARED = 250
+    min_dist_squared = float('inf')
+    min_index = -1
     player = None
-    if min_index >= 0:
-        player = enemies.pop(min_index)
-        if PRINT_IMAGE:
-            save_parsed_circles(original_image, resized_image, high_contrast_image, small_removed_image, player, enemies, food)
+    for (index, enemy) in enumerate(enemies):
+        x, y, radius = enemy
+        dist_squared = ((width_resized / 2) - x) ** 2 + ((height_resized / 2) - y) ** 2
+
+        # Keep player
+        if (dist_squared < MIN_PLAYER_DIST_SQUARED) and (dist_squared < min_dist_squared):
+            min_dist_squared = dist_squared
+            min_index = index
+            player = enemy
+
+    # Remove any detected 'enemies' that are too close, as they are false positives
+    filtered_enemies = []
+    if player is None:
+        filtered_enemies = enemies
+    else:
+        # Remove player from enemies list
+        enemies.pop(min_index)
+        _, _, player_radius = player
+        for enemy in enemies:
+            x, y, radius = enemy
+            dist = (((width_resized / 2) - x) ** 2 + ((height_resized / 2) - y) ** 2) ** (1 / 2)
+
+            if (dist - radius) > 0:
+                filtered_enemies.append(enemy)
+
+    if (not player is None) and PRINT_IMAGE:
+        save_parsed_circles(original_image, resized_image, high_contrast_image, small_removed_image, player, filtered_enemies, food)
 
     def transform_origin(item):
         x, y, radius = item
@@ -76,7 +90,7 @@ def hough_circles(image):
         )
 
     # Transform coordinates to center origin
-    enemies = list(map(transform_origin, enemies))
+    enemies = list(map(transform_origin, filtered_enemies))
     food = list(map(transform_origin, food))
 
     return player, enemies, food

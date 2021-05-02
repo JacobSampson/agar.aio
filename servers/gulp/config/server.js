@@ -136,24 +136,31 @@ function balanceMass() {
 io.on('connection', function (socket) {
     console.log('A user connected!');
 
-    var radius = util.massToRadius(c.defaultPlayerMass);
-    var position = c.newPlayerInitialPosition == 'farthest' ? util.uniformPosition(users, radius) : util.randomPosition(radius);
+    let radius, position;
+    let currentPlayer = {};
+    
+    try {
+        radius = util.massToRadius(c.defaultPlayerMass);
+        position = c.newPlayerInitialPosition == 'farthest' ? util.uniformPosition(users, radius) : util.randomPosition(radius);
 
-    var currentPlayer = {
-        id: socket.id,
-        x: position.x,
-        y: position.y,
-        w: radius,
-        h: radius,
-        radius: radius,
-        mass: c.defaultPlayerMass,
-        hue: Math.round(Math.random() * 360),
-        lastHeartbeat: new Date().getTime(),
-        target: {
-            x: 0,
-            y: 0
-        }
-    };
+        currentPlayer = {
+            id: socket.id,
+            x: position.x,
+            y: position.y,
+            w: radius,
+            h: radius,
+            radius: radius,
+            mass: c.defaultPlayerMass,
+            hue: Math.round(Math.random() * 360),
+            lastHeartbeat: new Date().getTime(),
+            target: {
+                x: 0,
+                y: 0
+            }
+        };
+    } catch (e) {
+        return;
+    }
 
     socket.on('gotit', function (player) {
         console.log('Player ' + player.id + ' connecting');
@@ -171,14 +178,19 @@ io.on('connection', function (socket) {
             var radius = util.massToRadius(c.defaultPlayerMass);
             var position = c.newPlayerInitialPosition == 'farthest' ? util.uniformPosition(users, radius) : util.randomPosition(radius);
 
-            player.x = position.x;
-            player.y = position.y;
-            player.target.x = player.x;
-            player.target.y = player.y;
-            player.mass = c.defaultPlayerMass;
-            player.radius = radius;
-            currentPlayer = player;
-            currentPlayer.lastHeartbeat = new Date().getTime();
+            try {
+                player.x = position.x;
+                player.y = position.y;
+                player.target.x = player.x;
+                player.target.y = player.y;
+                player.mass = c.defaultPlayerMass;
+                player.radius = radius;
+                currentPlayer = player;
+                currentPlayer.lastHeartbeat = new Date().getTime();    
+            } catch (e) {
+                return;
+            }
+
             users.push(currentPlayer);
 
             io.emit('playerJoin', { name: currentPlayer.name });
