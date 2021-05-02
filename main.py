@@ -20,16 +20,17 @@ import pandas as pd
 # TODO: Convert to named arguments
 
 # IS_TRAIN = sys.argv[1]
-IS_TRAIN = True
+IS_TRAIN = False
 NUM_GENERATIONS = int(sys.argv[2])
 NUM_SERVERS = int(sys.argv[3])
 
 CONT_TRAIN = len(sys.argv) == 5
 CHECKPOINT_FILE_NAME = None if (not CONT_TRAIN) else sys.argv[4]
 
-WINNER_FILE_NAME = "./checkpoints/4.18.2021/winner.pkl"
+# WINNER_FILE_NAME = "./checkpoints/4.18.2021/winner.pkl"
+WINNER_FILE_NAME = os.environ["WINNER_FILE_NAME"]
 CONFIG_FILE_NAME = "./scripts/config"
-NUM_RUNS = 100
+NUM_RUNS = 50
 
 # Constants
 
@@ -61,24 +62,25 @@ def train():
             os.kill(pid, signal.CTRL_C_EVENT)
 
 def test():
-    pid = ServerFactory.create(BASE_PORT)
+    # pid = ServerFactory.create(BASE_PORT)
     time.sleep(15)
 
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
                         CONFIG_FILE_NAME)
-    genome = pickle.load(open(WINNER_FILE_NAME, "rb"))
+    genome = pickle.load(open("./checkpoints/history/%s" % WINNER_FILE_NAME, "rb"))
     net = neat.nn.FeedForwardNetwork.create(genome, config)
 
-    scores = pd.DataFrame(columns=["Run", "Score", "Player"])
+    scores = pd.DataFrame(columns=["checkpoint", "run", "score", "player"])
     try:
-        for _ in range(NUM_RUNS):
+        for num_run in range(NUM_RUNS):
+            print('[log] Run %d' % num_run)
             agents = [
                 lambda driver, url: NNAgent(driver, url, net),
 
-                # lambda driver, url: AggressiveAgent(driver, url),
-                # lambda driver, url: GreedyAgent(driver, url),
-                # lambda driver, url: DefensiveAgent(driver, url)
+                lambda driver, url: AggressiveAgent(driver, url),
+                lambda driver, url: GreedyAgent(driver, url),
+                lambda driver, url: DefensiveAgent(driver, url)
 
                 # lambda driver, url: AgarioAgent(driver, url, net),
             ]
@@ -95,7 +97,7 @@ def test():
 
                         # Add score to record
                         rows, _ = scores.shape
-                        scores.loc[rows] = [index, score, agent.CLASS_NAME]
+                        scores.loc[rows] = [WINNER_FILE_NAME.split('.')[0], num_run, score, agent.CLASS_NAME]
 
                     return score_agent
 
@@ -106,12 +108,12 @@ def test():
             for thread in threads:
                 thread.join()
 
-            time.sleep(10)
+            time.sleep(15)
     except Exception as e:
         print(e)
     finally:
-        scores.to_csv('checkpoints/scores.csv', index=False)
-        os.kill(pid, signal.CTRL_C_EVENT)
+        scores.to_csv('checkpoints/scores.csv', index=False, mode='a', header=False)
+        # os.kill(pid, signal.CTRL_C_EVENT)
 
     sys.exit()
 

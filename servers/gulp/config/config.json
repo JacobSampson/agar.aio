@@ -11,7 +11,7 @@
     "logChat": 0,
     "networkUpdateFactor": 150,
     "maxHeartbeatInterval": 5000,
-    "foodUniformDisposition": true,
+    "foodUniformDisposition": false,
     "newPlayerInitialPosition": "farthest",
     "massLossRate": 0,
     "deadlyBorder": false,

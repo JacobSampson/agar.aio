@@ -7,6 +7,8 @@ import scripts.visualize as visualize
 from threading import Lock, Thread
 import random
 
+USE_VISUALS = False
+
 class Train:
     def __init__(self, driver_factory, generations):
         self.generations = generations
@@ -98,10 +100,11 @@ class Train:
             winner = population.best_genome
             pickle.dump(winner, open('./checkpoints/winner.pkl', 'wb'))
 
-            # Visualize
-            visualize.draw_net(config, winner, True)
-            visualize.plot_stats(stats, ylog=False, view=True)
-            visualize.plot_species(stats, view=True)
+            if USE_VISUALS:
+                # Visualize
+                visualize.draw_net(config, winner, True)
+                visualize.plot_stats(stats, ylog=False, view=True)
+                visualize.plot_species(stats, view=True)
 
     def main(self, config_file="config"):
         local_dir = os.path.dirname(__file__)
