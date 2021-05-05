@@ -136,6 +136,7 @@ class LocalAgent(Agent):
     def update(self):
         try:
             # Update state
+            start_time = time.time()
             image = self.get_image()
             player, enemies, food = hough_circles(image)
 
@@ -147,8 +148,11 @@ class LocalAgent(Agent):
                             self.SPLIT)
 
             self.curr_score = self.score()
+            print("--- %s seconds_to_update ---" % (time.time() - start_time))
 
+            start_time = time.time()
             x, y = self.get_move()
+            print("--- %s seconds_to_decide_move ---" % (time.time() - start_time))
             self.move(x, y)
 
             return self.curr_score
@@ -164,7 +168,6 @@ class NNAgent(LocalAgent):
         super().__init__(driver, url)
         self.net = net
 
-    def get_move(self):
         move = self.net.activate(self.get_state())
         return move
 
@@ -194,7 +197,7 @@ class AggressiveAgent(LocalAgent):
 
 class DefensiveAgent(LocalAgent):
     # MAX_TIME_ALIVE = float("inf")
-    CLOSEST_AGENT = 50
+    CLOSEST_AGENT_THRESHOLD = 50
     CLASS_NAME = "DEFENSIVE"
 
     def get_move(self):
@@ -202,10 +205,10 @@ class DefensiveAgent(LocalAgent):
 
         if len(enemies) > 0:
             closest_enemy = enemies[0]
-            dist_closest_enemy = No(((closest_enemy[0]) ** 2) + ((closest_enemy[1]) ** 2)) ** (0.5)
+            dist_closest_enemy = (((closest_enemy[0]) ** 2) + ((closest_enemy[1]) ** 2)) ** (0.5)
 
             # Run from closest enemy, if within distance threshold
-            if dist_closest_enemy < DefensiveAgent.CLOSEST_AGENT:
+            if dist_closest_enemy < DefensiveAgent.CLOSEST_AGENT_THRESHOLD:
                 return [-closest_enemy[0], -closest_enemy[1]]
 
         # Closest food

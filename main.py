@@ -78,9 +78,9 @@ def test():
             agents = [
                 lambda driver, url: NNAgent(driver, url, net),
 
-                lambda driver, url: AggressiveAgent(driver, url),
-                lambda driver, url: GreedyAgent(driver, url),
-                lambda driver, url: DefensiveAgent(driver, url)
+                # lambda driver, url: AggressiveAgent(driver, url),
+                # lambda driver, url: GreedyAgent(driver, url),
+                # lambda driver, url: DefensiveAgent(driver, url)
 
                 # lambda driver, url: AgarioAgent(driver, url, net),
             ]
