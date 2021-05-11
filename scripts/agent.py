@@ -153,7 +153,9 @@ class LocalAgent(Agent):
             start_time = time.time()
             x, y = self.get_move()
             print("--- %s seconds_to_decide_move ---" % (time.time() - start_time))
+            start_time = time.time()
             self.move(x, y)
+            print("--- %s seconds_to_actually_move ---" % (time.time() - start_time))
 
             return self.curr_score
 
@@ -168,6 +170,7 @@ class NNAgent(LocalAgent):
         super().__init__(driver, url)
         self.net = net
 
+    def get_move(self):
         move = self.net.activate(self.get_state())
         return move
 

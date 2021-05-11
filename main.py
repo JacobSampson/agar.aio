@@ -27,8 +27,8 @@ NUM_SERVERS = int(sys.argv[3])
 CONT_TRAIN = len(sys.argv) == 5
 CHECKPOINT_FILE_NAME = None if (not CONT_TRAIN) else sys.argv[4]
 
-# WINNER_FILE_NAME = "./checkpoints/4.18.2021/winner.pkl"
-WINNER_FILE_NAME = os.environ["WINNER_FILE_NAME"]
+WINNER_FILE_NAME = "./checkpoints/4.20.2021/winner.pkl"
+# WINNER_FILE_NAME = os.environ["WINNER_FILE_NAME"]
 CONFIG_FILE_NAME = "./scripts/config"
 NUM_RUNS = 50
 
@@ -60,6 +60,33 @@ def train():
         print('[log] Removing servers')
         for pid in pids:
             os.kill(pid, signal.CTRL_C_EVENT)
+
+def basic():
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                        neat.DefaultSpeciesSet, neat.DefaultStagnation,
+                        CONFIG_FILE_NAME)
+    genome = pickle.load(open(WINNER_FILE_NAME, "rb"))
+    net = neat.nn.FeedForwardNetwork.create(genome, config)
+
+    try:
+        agents = [
+            lambda driver, url: NNAgent(driver, url, net),
+
+            # lambda driver, url: AggressiveAgent(driver, url),
+            # lambda driver, url: G
+            # reedyAgent(driver, url),
+            # lambda driver, url: DefensiveAgent(driver, url)
+
+            # lambda driver, url: AgarioAgent(driver, url, net),
+        ]
+
+        driver, url = DriverFactory(AGARIO_TEST_URL).create()
+        agent = NNAgent(driver, AGARIO_TEST_URL, net)
+        agent.run()
+    except Exception as e:
+        print(e)
+
+    sys.exit()
 
 def test():
     # pid = ServerFactory.create(BASE_PORT)
@@ -123,4 +150,5 @@ if __name__ == "__main__":
         train()
     else:
         print('Testing...')
-        test()
+        # test()
+        basic()
