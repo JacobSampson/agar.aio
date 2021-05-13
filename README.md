@@ -11,7 +11,7 @@ Bot for the online multiplayer game [agar.io](https://agar.io/). Trained with a 
 
 ## About
 
-
+See [report.pdf](report/report.pdf) for a full report
 
 ## Getting Started
 
